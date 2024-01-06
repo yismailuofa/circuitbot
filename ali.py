@@ -57,19 +57,16 @@ This setup will make the LED blink on and off every 20 seconds. Remember to doub
 import re
 import json
 import subprocess
+from prompt import prompt
 
-
-mappings = []
+from components import Component
 
 
 def parseRes(res):
     pattern = r"```json\s*(.*?)```"
     ans = re.findall(pattern, res, re.DOTALL)
-    # print(ans)
     schematic = bom = arduinoCode = None
-    for i, a in enumerate(ans):
-        print(f"{i} NEW BLOCK\n {a}")
-        a = json.loads(a)
+    for a in ans:
         # check if is instance of a list of lists
         if (
             isinstance(a, list) and a[0] and isinstance(a[0], list)
@@ -116,6 +113,94 @@ def sendCodeToArduino(code):
     subprocess.run(upload_command)
 
 
+def createPrompt(task, components: list[Component]) -> str:
+    billOfMaterials = []
+    pinouts = {}
+
+    for c in components:
+        billOfMaterials.append(
+            {
+                "part": c.partName,
+                "name": c.name,
+                "value": c.value,
+            }
+        )
+
+        pinouts[c.partName] = list(c.pins.keys())
+
+    formattedPrompt = prompt.format(
+        task=task,
+        billOfMaterials=json.dumps(billOfMaterials, indent=4),
+        pinouts=json.dumps(pinouts, indent=4),
+    )
+
+    return formattedPrompt
+
+
 if __name__ == "__main__":
     schematic, bom, arduinoCode = parseRes(res)
-    sendCodeToArduino(arduinoCode)
+    # sendCodeToArduino(arduinoCode)
+
+    # make list of components
+    components = [
+        Component(
+            name="R1",
+            partName="Resistor",
+            pins={"1": (0, 0), "2": (1, 0)},
+            value="100 ohms",
+        ),
+        Component(
+            name="R2",
+            partName="Resistor",
+            pins={"1": (0, 0), "2": (1, 0)},
+            value="200 ohms",
+        ),
+        Component(
+            name="R3",
+            partName="Resistor",
+            pins={"1": (0, 0), "2": (1, 0)},
+            value="300 ohms",
+        ),
+        Component(
+            name="D1",
+            partName="LED",
+            pins={"anode": (0, 0), "cathode": (1, 0)},
+            value="Red",
+        ),
+        Component(
+            name="uno",
+            partName="Arduino Uno",
+            pins={
+                "5V": (0, 0),
+                "3.3V": (0, 0),
+                "GND": (0, 0),
+                "AREF": (0, 0),
+                "D0/RX": (0, 0),
+                "D1/TX": (0, 0),
+                "D2": (0, 0),
+                "D3": (0, 0),
+                "D4": (0, 0),
+                "D5": (0, 0),
+                "D6": (0, 0),
+                "D7": (0, 0),
+                "D8": (0, 0),
+                "D9": (0, 0),
+                "D10": (0, 0),
+                "D11": (0, 0),
+                "D12": (0, 0),
+                "D13": (0, 0),
+                "A0": (0, 0),
+                "A1": (0, 0),
+                "A2": (0, 0),
+                "A3": (0, 0),
+                "A4/SDA": (0, 0),
+                "A5/SCL": (0, 0),
+            },
+        ),
+    ]
+
+    formattedPrompt = createPrompt(
+        "Make a circuit that will light an LED at variable brightness", components
+    )
+
+    print(formattedPrompt)

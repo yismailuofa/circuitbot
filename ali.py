@@ -1,3 +1,9 @@
+# make request to openai api
+from openai import OpenAI
+
+client = OpenAI()
+
+
 res = """To create a circuit that blinks an LED every 20 seconds using an Arduino Uno, I'll provide you with the bill of materials, pinouts, schematic, code, and any special instructions. Let's get started.
 ### Schematic (List of Connections):
 ```json
@@ -25,6 +31,7 @@ void loop() {
     digitalWrite(PIN_LED, LOW); // Turn LED OFF
     delay(20000); // Wait for another 20 seconds
 }
+
 ```
 
 ### Instructions:
@@ -138,8 +145,22 @@ def executeCommand(conn, components):
         f"Connecting {c1.name} pin {fr['pin']} ({c1.pins[fr['pin']]}) to {c2.name} pin {to['pin']} ({c2.pins[to['pin']]})"
     )
 
+    # convert to gcode and send to arduino
     executeCommand(c1, c2)
 
+
+def sendPrompt(prompt):
+    stream = client.chat.completions.create(
+        model="gpt-4",
+        messages=[{"role": "user", "content": prompt}],
+        stream=True,
+    )
+    res = ''
+    for chunk in stream:
+        if chunk.choices[0].delta.content is not None:
+            res += chunk.choices[0].delta.content
+            print(chunk.choices[0].delta.content, end="")
+    return res
 
 if __name__ == "__main__":
     # make list of components
@@ -200,9 +221,14 @@ if __name__ == "__main__":
         ),
     ]
 
+    
+    
+
     formattedPrompt = createPrompt(
-        "Make a circuit that will light an LED at variable brightness", components
+        input("Please describe a circuit to create: "), components
     )
+
+    res = sendPrompt(formattedPrompt)
 
     schematic, arduinoCode = parseRes(res)
 

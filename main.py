@@ -143,6 +143,7 @@ def sendPrompt(prompt):
 
 if __name__ == "__main__":
     controller = Controller(
+        port="/dev/ttyACM0",
         components=[
             Component(
                 name="R1",
@@ -198,7 +199,7 @@ if __name__ == "__main__":
                     "A5/SCL": (0, 0),
                 },
             ),
-        ]
+        ],
     )
 
     formattedPrompt = createPrompt(

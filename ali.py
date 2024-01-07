@@ -1,23 +1,4 @@
 res = """To create a circuit that blinks an LED every 20 seconds using an Arduino Uno, I'll provide you with the bill of materials, pinouts, schematic, code, and any special instructions. Let's get started.
-
-### Bill of Materials:
-```json
-[
-    {"part":"Arduino Uno", "name":"uno", "value":"", "notes":"Arduino Uno microcontroller"},
-    {"part":"LED", "name":"D1", "value":"red", "notes":"Blinking LED. Standard voltage range (2-3.3V)."},
-    {"part":"Resistor", "name":"R1", "value":"220 ohm", "notes":"Current limiting resistor for LED at 5V"}
-]
-```
-
-### Pinouts:
-```json
-{
-    "Arduino Uno": ["5V", "3.3V", "GND", "AREF", "D0/RX", "D1/TX", "D2", "D3", "D4", "D5", "D6", "D7", "D8", "D9", "D10", "D11", "D12", "D13", "A0", "A1", "A2", "A3", "A4/SDA", "A5/SCL"],
-    "D1": ["anode", "cathode"],
-    "R1": ["1", "2"]
-}
-```
-
 ### Schematic (List of Connections):
 ```json
 [
@@ -65,21 +46,20 @@ from components import Component
 def parseRes(res):
     pattern = r"```json\s*(.*?)```"
     ans = re.findall(pattern, res, re.DOTALL)
-    schematic = bom = arduinoCode = None
+    schematic = arduinoCode = None
     for a in ans:
+        a = json.loads(a)
         # check if is instance of a list of lists
         if (
             isinstance(a, list) and a[0] and isinstance(a[0], list)
         ):  # it is the schematic
             schematic = a
-        elif isinstance(a, list) and a[0] and isinstance(a[0], dict):
-            bom = a
 
     pattern = r"```cpp\s*(.*?)```"
     ans = re.findall(pattern, res, re.DOTALL)
     arduinoCode = ans[0]
 
-    return schematic, bom, arduinoCode
+    return schematic, arduinoCode
 
 
 def sendCodeToArduino(code):
@@ -137,10 +117,31 @@ def createPrompt(task, components: list[Component]) -> str:
     return formattedPrompt
 
 
-if __name__ == "__main__":
-    schematic, bom, arduinoCode = parseRes(res)
-    # sendCodeToArduino(arduinoCode)
+def getComponentByName(name, components):
+    for c in components:
+        if c.name == name:
+            return c
 
+    return None
+
+
+def executeCommand(conn, components):
+    fr, to = conn
+    c1 = getComponentByName(fr["name"], components)
+    c2 = getComponentByName(to["name"], components)
+
+    if c1 is None or c2 is None:
+        print("Error: Component not found")
+        return
+
+    print(
+        f"Connecting {c1.name} pin {fr['pin']} ({c1.pins[fr['pin']]}) to {c2.name} pin {to['pin']} ({c2.pins[to['pin']]})"
+    )
+
+    executeCommand(c1, c2)
+
+
+if __name__ == "__main__":
     # make list of components
     components = [
         Component(
@@ -203,4 +204,10 @@ if __name__ == "__main__":
         "Make a circuit that will light an LED at variable brightness", components
     )
 
-    print(formattedPrompt)
+    schematic, arduinoCode = parseRes(res)
+
+    if arduinoCode is not None and False:
+        sendCodeToArduino(arduinoCode)
+
+    for conn in schematic:
+        executeCommand(conn, components)

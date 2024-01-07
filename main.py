@@ -1,9 +1,3 @@
-# make request to openai api
-from openai import OpenAI
-
-client = OpenAI()
-
-
 res = """To create a circuit that blinks an LED every 20 seconds using an Arduino Uno, I'll provide you with the bill of materials, pinouts, schematic, code, and any special instructions. Let's get started.
 ### Schematic (List of Connections):
 ```json
@@ -45,9 +39,12 @@ This setup will make the LED blink on and off every 20 seconds. Remember to doub
 import re
 import json
 import subprocess
+from controller import Controller
 from prompt import prompt
+from openai import OpenAI
 
-from components import Component
+
+from component import Component
 
 
 def parseRes(res):
@@ -101,6 +98,11 @@ def sendCodeToArduino(code):
 
 
 def createPrompt(task, components: list[Component]) -> str:
+    if not task:
+        task = (
+            "Create a circuit that blinks an LED every 20 seconds using an Arduino Uno"
+        )
+
     billOfMaterials = []
     pinouts = {}
 
@@ -124,116 +126,92 @@ def createPrompt(task, components: list[Component]) -> str:
     return formattedPrompt
 
 
-def getComponentByName(name, components):
-    for c in components:
-        if c.name == name:
-            return c
-
-    return None
-
-
-def executeCommand(conn, components):
-    fr, to = conn
-    c1 = getComponentByName(fr["name"], components)
-    c2 = getComponentByName(to["name"], components)
-
-    if c1 is None or c2 is None:
-        print("Error: Component not found")
-        return
-
-    print(
-        f"Connecting {c1.name} pin {fr['pin']} ({c1.pins[fr['pin']]}) to {c2.name} pin {to['pin']} ({c2.pins[to['pin']]})"
-    )
-
-    # convert to gcode and send to arduino
-    executeCommand(c1, c2)
-
-
 def sendPrompt(prompt):
+    client = OpenAI()
     stream = client.chat.completions.create(
         model="gpt-4",
         messages=[{"role": "user", "content": prompt}],
         stream=True,
     )
-    res = ''
+    res = ""
     for chunk in stream:
         if chunk.choices[0].delta.content is not None:
             res += chunk.choices[0].delta.content
             print(chunk.choices[0].delta.content, end="")
     return res
 
+
 if __name__ == "__main__":
-    # make list of components
-    components = [
-        Component(
-            name="R1",
-            partName="Resistor",
-            pins={"1": (0, 0), "2": (1, 0)},
-            value="100 ohms",
-        ),
-        Component(
-            name="R2",
-            partName="Resistor",
-            pins={"1": (0, 0), "2": (1, 0)},
-            value="200 ohms",
-        ),
-        Component(
-            name="R3",
-            partName="Resistor",
-            pins={"1": (0, 0), "2": (1, 0)},
-            value="300 ohms",
-        ),
-        Component(
-            name="D1",
-            partName="LED",
-            pins={"anode": (0, 0), "cathode": (1, 0)},
-            value="Red",
-        ),
-        Component(
-            name="uno",
-            partName="Arduino Uno",
-            pins={
-                "5V": (0, 0),
-                "3.3V": (0, 0),
-                "GND": (0, 0),
-                "AREF": (0, 0),
-                "D0/RX": (0, 0),
-                "D1/TX": (0, 0),
-                "D2": (0, 0),
-                "D3": (0, 0),
-                "D4": (0, 0),
-                "D5": (0, 0),
-                "D6": (0, 0),
-                "D7": (0, 0),
-                "D8": (0, 0),
-                "D9": (0, 0),
-                "D10": (0, 0),
-                "D11": (0, 0),
-                "D12": (0, 0),
-                "D13": (0, 0),
-                "A0": (0, 0),
-                "A1": (0, 0),
-                "A2": (0, 0),
-                "A3": (0, 0),
-                "A4/SDA": (0, 0),
-                "A5/SCL": (0, 0),
-            },
-        ),
-    ]
-
-    
-    
-
-    formattedPrompt = createPrompt(
-        input("Please describe a circuit to create: "), components
+    controller = Controller(
+        components=[
+            Component(
+                name="R1",
+                partName="Resistor",
+                pins={"1": (0, 0), "2": (1, 0)},
+                value="100 ohms",
+            ),
+            Component(
+                name="R2",
+                partName="Resistor",
+                pins={"1": (0, 0), "2": (1, 0)},
+                value="200 ohms",
+            ),
+            Component(
+                name="R3",
+                partName="Resistor",
+                pins={"1": (0, 0), "2": (1, 0)},
+                value="300 ohms",
+            ),
+            Component(
+                name="D1",
+                partName="LED",
+                pins={"anode": (0, 0), "cathode": (1, 0)},
+                value="Red",
+            ),
+            Component(
+                name="uno",
+                partName="Arduino Uno",
+                pins={
+                    "5V": (0, 0),
+                    "3.3V": (0, 0),
+                    "GND": (0, 0),
+                    "AREF": (0, 0),
+                    "D0/RX": (0, 0),
+                    "D1/TX": (0, 0),
+                    "D2": (0, 0),
+                    "D3": (0, 0),
+                    "D4": (0, 0),
+                    "D5": (0, 0),
+                    "D6": (0, 0),
+                    "D7": (0, 0),
+                    "D8": (0, 0),
+                    "D9": (0, 0),
+                    "D10": (0, 0),
+                    "D11": (0, 0),
+                    "D12": (0, 0),
+                    "D13": (0, 0),
+                    "A0": (0, 0),
+                    "A1": (0, 0),
+                    "A2": (0, 0),
+                    "A3": (0, 0),
+                    "A4/SDA": (0, 0),
+                    "A5/SCL": (0, 0),
+                },
+            ),
+        ]
     )
 
-    res = sendPrompt(formattedPrompt)
+    formattedPrompt = createPrompt(
+        input("Please describe a circuit to create: "), controller.components
+    )
 
+    # res = sendPrompt(formattedPrompt) UNCOMMENT TO HIT OPENAI
     schematic, arduinoCode = parseRes(res)
 
-    if arduinoCode is not None and False:
-        sendCodeToArduino(arduinoCode)
+    if arduinoCode is None or schematic is None:
+        print("Error: Could not parse response")
+        exit(1)
 
-    for conn in schematic:
-        executeCommand(conn, components)
+    # sendCodeToArduino(arduinoCode) UNCOMMENT TO SEND CODE TO ARDUINO
+
+    controller.executeSchematic(schematic)

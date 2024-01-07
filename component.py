@@ -7,4 +7,3 @@ class Component:
     partName: str
     pins: dict = field(default_factory=dict)
     value: str = ""
-    isPlaced: bool = False
